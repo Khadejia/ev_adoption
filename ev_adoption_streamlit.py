@@ -123,13 +123,18 @@ for year in [2022, 2023]:
     ax.set_ylabel("EV Share (%)")
     st.pyplot(fig)
     
-    # Show states per cluster as a small table
-    st.write("**States in each cluster:**")
-    for cluster in sorted(year_data["Cluster"].unique()):
-        states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
-        if cluster == 1:
-            label = "High-Adoption"
-        elif
+# Show states per cluster as a small table
+st.write("**States in each cluster:**")
+for cluster in sorted(year_data["Cluster"].unique()):
+    states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
+    if cluster == 1:
+        label = "High-Adoption"
+    elif cluster == 2:
+        label = "Medium-Adoption"
+    elif cluster == 3:
+        label = "Low-Adoption"
+    st.write(f"{label}: {', '.join(states_in_cluster)}")
+
 
 
 st.markdown("---")
