@@ -117,10 +117,12 @@ for year in [2022, 2023]:
     ax.set_ylabel("EV Share (%)")
     st.pyplot(fig)
 
-    # Show states per cluster as a small table
-    st.write("**States in each cluster:**")
-    for cluster in sorted(year_data["Cluster"].unique()):
-        states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"]._]()_
+# Show states per cluster as a small table
+st.write("**States in each cluster:**")
+for cluster in sorted(year_data["Cluster"].unique()):
+    states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
+    st.write(f"Cluster {cluster}: {', '.join(states_in_cluster)}")
+
 
 
 
