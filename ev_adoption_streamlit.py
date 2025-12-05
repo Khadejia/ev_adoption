@@ -91,18 +91,21 @@ st.pyplot(fig1)
 st.markdown("---")
 st.header("Decision Tree Classification (Growth Groups)")
 
+s# Compute growth
 subset["Growth"] = subset.groupby("state")["EV Registrations"].diff().fillna(0)
 
-median_growth = subset["Growth"].median()
+# Calculate quantiles (instead of bins)
+q1 = subset["Growth"].quantile(0.33)
+q2 = subset["Growth"].quantile(0.66)
 
-# if median is 0, nudge it slightly
-if median_growth == 0:
-    median_growth = 0.00001
+# Guarantee monotonic bins by sorting them
+bins = sorted([-float("inf"), q1, q2, float("inf")])
 
 subset["Growth_Label"] = pd.cut(
     subset["Growth"],
-    bins=[-float("inf"), 0, median_growth, float("inf")],
-    labels=["Low", "Medium", "High"]
+    bins=bins,
+    labels=["Low", "Medium", "High"],
+    include_lowest=True
 )
 
 dt_data = subset.dropna(subset=features + ["Growth_Label"])
