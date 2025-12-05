@@ -130,45 +130,60 @@ for year in [2022, 2023]:
     st.write(f"**Low-Adoption:** {', '.join(low_adoption)}")
 
 
-
-
-
 st.markdown("---")
-st.header("Decision Tree Classification (Growth Groups)")
+st.header("Decision Tree Classification: EV Growth")
 
-subset["Growth"] = subset.groupby("state")["EV Registrations"].diff().fillna(0)
+# --- Prepare data ---
+subset = df[df["year"].isin([2022, 2023])].copy()
 
-# Calculate quantiles for 2 labels
-q = subset["Growth"].quantile(0.5)
-bins = sorted([-float("inf"), q, float("inf")])
+# Define clustered states
+high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
+medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "Texas"]
+low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
 
-subset["Growth_Label"] = pd.cut(
-    subset["Growth"],
-    bins=bins,
-    labels=["Low", "High"],
-    include_lowest=True
+cluster_states = high_adoption + medium_adoption + low_adoption
+subset = subset[subset["state"].isin(cluster_states)]
+
+# Pivot data to have 2022 and 2023 side by side
+pivot = subset.pivot(index="state", columns="year", 
+                     values=["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"])
+
+# Flatten MultiIndex
+pivot.columns = ["_".join([col[0], str(col[1])]) for col in pivot.columns]
+pivot = pivot.dropna()
+
+# Calculate growth in EV registrations
+pivot["Growth"] = pivot["EV Registrations_2023"] - pivot["EV Registrations_2022"]
+
+# Create growth labels based on quantiles
+q1 = pivot["Growth"].quantile(0.33)
+q2 = pivot["Growth"].quantile(0.66)
+bins = [-float("inf"), q1, q2, float("inf")]
+pivot["Growth_Label"] = pd.cut(pivot["Growth"], bins=bins, labels=["Low", "Medium", "High"])
+
+# Features for model
+features = ["Stations_2023", "Per_Cap_Income_2023", "Incentives_2023", "EV Share (%)_2023", "gasoline_price_per_gallon_2023"]
+X = pivot[features]
+y = pivot["Growth_Label"]
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y
 )
 
-# Convert categorical 'Incentives' to numeric
-subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
-
-dt_data = subset.dropna(subset=["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num", "Growth_Label"])
-X = dt_data[["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]]
-y = dt_data["Growth_Label"]
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
-
-clf = DecisionTreeClassifier(max_depth=4, random_state=1)
+# Train Decision Tree
+clf = DecisionTreeClassifier(max_depth=4, random_state=42)
 clf.fit(X_train, y_train)
 pred = clf.predict(X_test)
 
+# Accuracy
 st.write(f"Decision Tree Accuracy: **{accuracy_score(y_test, pred):.2f}**")
 
-importance = pd.Series(clf.feature_importances_, index=X.columns)
+# Feature importance plot
+importance = pd.Series(clf.feature_importances_, index=features)
 
-fig2, ax2 = plt.subplots(figsize=(7, 4))
-sns.barplot(x=importance.values, y=importance.index, ax=ax2)
-ax2.set_title("Feature Importance")
-st.pyplot(fig2)
-
+fig, ax = plt.subplots(figsize=(7, 4))
+sns.barplot(x=importance.values, y=importance.index, ax=ax)
+ax.set_title("Feature Importance for EV Growth Prediction")
+st.pyplot(fig)
 
