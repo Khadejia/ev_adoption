@@ -130,6 +130,7 @@ for year in [2022, 2023]:
     st.write(f"**Low-Adoption:** {', '.join(low_adoption)}")
 
 
+
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth")
 
@@ -144,46 +145,68 @@ low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisian
 cluster_states = high_adoption + medium_adoption + low_adoption
 subset = subset[subset["state"].isin(cluster_states)]
 
-# Pivot data to have 2022 and 2023 side by side
-pivot = subset.pivot(index="state", columns="year", 
-                     values=["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"])
+# Fill missing values
+subset["Per_Cap_Income"] = subset["Per_Cap_Income"].fillna(0)
+subset["Incentives"] = subset["Incentives"].fillna(0)
 
-# Flatten MultiIndex
-pivot.columns = ["_".join([col[0], str(col[1])]) for col in pivot.columns]
-pivot = pivot.dropna()
-
-# Calculate growth in EV registrations
-pivot["Growth"] = pivot["EV Registrations_2023"] - pivot["EV Registrations_2022"]
-
-# Create growth labels based on quantiles
-q1 = pivot["Growth"].quantile(0.33)
-q2 = pivot["Growth"].quantile(0.66)
-bins = [-float("inf"), q1, q2, float("inf")]
-pivot["Growth_Label"] = pd.cut(pivot["Growth"], bins=bins, labels=["Low", "Medium", "High"])
-
-# Features for model
-features = ["Stations_2023", "Per_Cap_Income_2023", "Incentives_2023", "EV Share (%)_2023", "gasoline_price_per_gallon_2023"]
-X = pivot[features]
-y = pivot["Growth_Label"]
-
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=42, stratify=y
-)
-
-# Train Decision Tree
-clf = DecisionTreeClassifier(max_depth=4, random_state=42)
-clf.fit(X_train, y_train)
-pred = clf.predict(X_test)
-
-# Accuracy
-st.write(f"Decision Tree Accuracy: **{accuracy_score(y_test, pred):.2f}**")
-
-# Feature importance plot
-importance = pd.Series(clf.feature_importances_, index=features)
-
-fig, ax = plt.subplots(figsize=(7, 4))
-sns.barplot(x=importance.values, y=importance.index, ax=ax)
-ax.set_title("Feature Importance for EV Growth Prediction")
-st.pyplot(fig)
-
+# --- Loop for each year ---
+for year in [2022, 2023]:
+    st.subheader(f"Decision Tree: EV Growth in {year}")
+    
+    year_data = subset[subset["year"] == year].copy()
+    year_data = year_data.sort_values("state")
+    
+    # Calculate growth compared to previous year
+    if year == 2023:
+        prev_year = subset[subset["year"] == 2022].set_index("state")
+        year_data["Growth"] = year_data.apply(
+            lambda row: row["EV Registrations"] - prev_year.loc[row["state"], "EV Registrations"], axis=1
+        )
+    else:
+        # For 2022, we can use difference from 2021 if available; else use EV registrations as proxy
+        year_data["Growth"] = year_data["EV Registrations"]
+    
+    # Growth labels
+    q1 = year_data["Growth"].quantile(0.33)
+    q2 = year_data["Growth"].quantile(0.66)
+    bins = [-float("inf"), q1, q2, float("inf")]
+    year_data["Growth_Label"] = pd.cut(year_data["Growth"], bins=bins, labels=["Low", "Medium", "High"])
+    
+    # Features
+    features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
+    X = year_data[features]
+    y = year_data["Growth_Label"]
+    
+    # Train-test split (only if enough samples)
+    if len(year_data) < 3:
+        st.warning(f"Not enough data to split for {year}. Training on full dataset.")
+        X_train, y_train = X, y
+        clf = DecisionTreeClassifier(max_depth=4, random_state=42)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_train)
+        st.write(f"Decision Tree Accuracy (full data): **{accuracy_score(y_train, pred):.2f}**")
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.3, random_state=42, stratify=y
+        )
+        clf = DecisionTreeClassifier(max_depth=4, random_state=42)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        st.write(f"Decision Tree Accuracy: **{accuracy_score(y_test, pred):.2f}**")
+    
+    # Feature importance
+    importance = pd.Series(clf.feature_importances_, index=features)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    sns.barplot(x=importance.values, y=importance.index, ax=ax)
+    ax.set_title(f"Feature Importance for EV Growth Prediction ({year})")
+    st.pyplot(fig)
+    
+    # Table of states and growth labels
+    st.write("**States and Growth Labels:**")
+    display_table = year_data[["state", "Growth", "Growth_Label"]].copy()
+    display_table = display_table.rename(columns={
+        "state": "State",
+        "Growth": "EV Registration Growth",
+        "Growth_Label": "Growth Category"
+    })
+    st.dataframe(display_table)
