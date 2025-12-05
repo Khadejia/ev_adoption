@@ -130,4 +130,3 @@ sns.barplot(x=importance.values, y=importance.index, ax=ax2)
 ax2.set_title("Feature Importance")
 st.pyplot(fig2)
 
-st.success("Analysis complete.")
