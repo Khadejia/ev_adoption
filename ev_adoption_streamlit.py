@@ -130,6 +130,14 @@ for year in [2022, 2023]:
     st.write(f"**Low-Adoption:** {', '.join(low_adoption)}")
 
 
+
+
+
+
+
+
+
+
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth 2022 → 2023")
 
@@ -143,6 +151,9 @@ pivot.columns = ["_".join([col[0], str(col[1])]) for col in pivot.columns]
 
 # Fill missing values
 pivot = pivot.fillna(0)
+
+# Add state names as a column
+pivot = pivot.reset_index()  # now pivot['state'] exists
 
 # Calculate growth 2023 - 2022
 pivot["Growth"] = pivot["EV Registrations_2023"] - pivot["EV Registrations_2022"]
@@ -180,9 +191,11 @@ ax.set_title("Feature Importance for EV Growth Prediction (2022→2023)")
 st.pyplot(fig)
 
 # Table of states and growth
-display_table = pivot[["Growth", "Growth_Label"]].copy()
-display_table = display_table.rename(columns={"Growth": "EV Registration Growth", "Growth_Label": "Growth Category"})
+display_table = pivot[["state", "Growth", "Growth_Label"]].copy()
+display_table = display_table.rename(columns={
+    "state": "State",
+    "Growth": "EV Registration Growth",
+    "Growth_Label": "Growth Category"
+})
 st.write("**States and Growth Labels:**")
-st.dataframe(display_table)
-
-
+st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
