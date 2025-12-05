@@ -63,11 +63,9 @@ else:
 
 
 st.markdown("---")
-st.header("K-Means Clustering by Year")
+st.header("EV Scatter by Year (K-Means simplified)")
 
-# Only consider 2022 and 2023
 subset = df[df["year"].isin([2022, 2023])].copy()
-
 subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
 
@@ -75,14 +73,29 @@ for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
     X = year_data[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-    if len(X) == 0:
-        continue  # skip if no data
+    st.subheader(f"EV Scatter for {year}")
 
+    if len(X) < 2:
+        # Too few rows for K-Means, just plot points by state
+        fig, ax = plt.subplots(figsize=(7, 5))
+        sns.scatterplot(
+            data=year_data,
+            x="Stations",
+            y="EV Share (%)",
+            hue="state",
+            style="Incentives",
+            s=100,
+            ax=ax
+        )
+        ax.set_title(f"EV Share vs. Stations — {year}")
+        st.pyplot(fig)
+        continue
+
+    # Otherwise, do K-Means with 2 clusters max
     n_clusters = min(2, len(X))
     kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
     year_data.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
 
-    st.subheader(f"K-Means Clusters for {year}")
     fig, ax = plt.subplots(figsize=(7, 5))
     sns.scatterplot(
         data=year_data,
@@ -90,6 +103,7 @@ for year in [2022, 2023]:
         y="EV Share (%)",
         hue="Cluster",
         palette="deep",
+        s=100,
         ax=ax
     )
     ax.set_title(f"EV Share vs. Stations — {year}")
