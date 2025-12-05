@@ -67,14 +67,18 @@ st.header("K-Means Clustering (2022–2023)")
 
 subset = df[df["year"].isin([2022, 2023])].copy()
 
-features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives"]
-
-# Convert categorical 'Incentives' to numeric
+# Convert 'Incentives' to numeric
 subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
-X = subset[["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]]
 
+# Select features for clustering
+features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
+
+# Drop rows with missing values in features
+X = subset[features].dropna()
+
+# Use 2 clusters since dataset is small
 kmeans = KMeans(n_clusters=2, random_state=0)
-subset["Cluster"] = kmeans.fit_predict(X)
+subset.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
 
 fig1, ax1 = plt.subplots(figsize=(7, 5))
 sns.scatterplot(
@@ -87,6 +91,7 @@ sns.scatterplot(
 )
 ax1.set_title("Clusters: EV Share vs. Charging Stations")
 st.pyplot(fig1)
+
 
 
 
