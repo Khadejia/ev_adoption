@@ -67,19 +67,23 @@ st.header("K-Means Clustering (2022–2023)")
 
 subset = df[df["year"].isin([2022, 2023])].copy()
 
-# Convert 'Incentives' to numeric
+# Convert categorical to numeric
 subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
 
-# Select features for clustering
+# Select numeric features
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
 
-# Drop rows with missing values in features
-X = subset[features].dropna()
+# Ensure all values are numeric
+X = subset[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-# Use 2 clusters since dataset is small
-kmeans = KMeans(n_clusters=2, random_state=0)
+# Set number of clusters <= number of rows
+n_clusters = min(2, len(X))
+
+# Fit KMeans
+kmeans = KMeans(n_clusters=n_clusters, random_state=0)
 subset.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
 
+# Plot
 fig1, ax1 = plt.subplots(figsize=(7, 5))
 sns.scatterplot(
     data=subset,
