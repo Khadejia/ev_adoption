@@ -63,67 +63,68 @@ else:
 
 
 st.markdown("---")
-st.header("EV Adoption Clusters by Year")
+st.header("EV Adoption Clusters by Year (Manual Mapping)")
 
+# Filter dataset for 2022–2023
 subset = df[df["year"].isin([2022, 2023])].copy()
-subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
-features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
 
-# Define a palette for 3 clusters
-palette = {0: "red", 1: "yellow", 2: "green"}  # Red = Low, Yellow = Medium, Green = High
+# Define clusters manually based on your description
+high_adoption = ["California", "Washington", "Oregon"]
+medium_adoption = ["Florida", "Virginia", "Colorado"]
+low_adoption = ["Mississippi", "West Virginia"]
 
+# Function to assign cluster
+def assign_cluster(state):
+    if state in high_adoption:
+        return 1  # High
+    elif state in medium_adoption:
+        return 2  # Medium
+    elif state in low_adoption:
+        return 3  # Low
+    else:
+        return 0  # Uncategorized
+
+subset["Cluster"] = subset["state"].apply(assign_cluster)
+
+# Define colors for clusters
+cluster_colors = {1: "green", 2: "yellow", 3: "red", 0: "gray"}  # 1=High,2=Medium,3=Low
+
+# Plot per year
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
-    X = year_data[features].apply(pd.to_numeric, errors="coerce").dropna()
-
-    if len(X) < 2:
-        st.subheader(f"EV Scatter for {year} (too few points for clustering)")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(
-            data=year_data,
-            x="Stations",
-            y="EV Share (%)",
-            hue="state",
-            s=200,
-            ax=ax,
-            legend=False
-        )
-        ax.set_title(f"EV Share vs Charging Stations — {year}")
-        ax.set_xlabel("Charging Stations")
-        ax.set_ylabel("EV Share (%)")
-        st.pyplot(fig)
-        continue
-
-    # K-Means clustering
-    n_clusters = min(3, len(X))
-    kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
-    year_data.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
-
-    st.subheader(f"K-Means Clusters for {year}")
+    
+    st.subheader(f"EV Adoption Clusters — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
+    
     sns.scatterplot(
         data=year_data,
         x="Stations",
         y="EV Share (%)",
         hue="Cluster",
-        palette=palette,
+        palette=cluster_colors,
         s=200,
         ax=ax,
         legend="full"
     )
-
+    
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
     ax.set_ylabel("EV Share (%)")
     st.pyplot(fig)
-
-# Show states per cluster as a small table
-st.write("**States in each cluster:**")
-for cluster in sorted(year_data["Cluster"].unique()):
-    states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
-    st.write(f"Cluster {cluster}: {', '.join(states_in_cluster)}")
-
-
+    
+    # Show states per cluster
+    st.write("**States in each cluster:**")
+    for cluster in sorted(year_data["Cluster"].unique()):
+        states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
+        if cluster == 1:
+            label = "High-Adoption"
+        elif cluster == 2:
+            label = "Medium-Adoption"
+        elif cluster == 3:
+            label = "Low-Adoption"
+        else:
+            label = "Uncategorized"
+        st.write(f"{label}: {', '.join(states_in_cluster)}")
 
 
 
