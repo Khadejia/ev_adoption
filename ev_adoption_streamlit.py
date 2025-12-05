@@ -68,16 +68,17 @@ st.header("K-Means Clustering (2022–2023)")
 subset = df[df["year"].isin([2022, 2023])].copy()
 
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives"]
-data = subset.dropna(subset=features)
 
-X = data[features]
+# Convert categorical 'Incentives' to numeric
+subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
+X = subset[["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]]
 
-kmeans = KMeans(n_clusters=3, random_state=0)
-data["Cluster"] = kmeans.fit_predict(X)
+kmeans = KMeans(n_clusters=2, random_state=0)
+subset["Cluster"] = kmeans.fit_predict(X)
 
 fig1, ax1 = plt.subplots(figsize=(7, 5))
 sns.scatterplot(
-    data=data,
+    data=subset,
     x="Stations",
     y="EV Share (%)",
     hue="Cluster",
@@ -88,34 +89,31 @@ ax1.set_title("Clusters: EV Share vs. Charging Stations")
 st.pyplot(fig1)
 
 
+
 st.markdown("---")
 st.header("Decision Tree Classification (Growth Groups)")
 
-
 subset["Growth"] = subset.groupby("state")["EV Registrations"].diff().fillna(0)
 
-# Calculate quantiles (instead of bins)
-q1 = subset["Growth"].quantile(0.33)
-q2 = subset["Growth"].quantile(0.66)
-
-# Guarantee monotonic bins by sorting them
-bins = sorted([-float("inf"), q1, q2, float("inf")])
+# Calculate quantiles for 2 labels
+q = subset["Growth"].quantile(0.5)
+bins = sorted([-float("inf"), q, float("inf")])
 
 subset["Growth_Label"] = pd.cut(
     subset["Growth"],
     bins=bins,
-    labels=["Low", "Medium", "High"],
+    labels=["Low", "High"],
     include_lowest=True
 )
 
-dt_data = subset.dropna(subset=features + ["Growth_Label"])
+# Convert categorical 'Incentives' to numeric
+subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
 
-X = dt_data[features]
+dt_data = subset.dropna(subset=["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num", "Growth_Label"])
+X = dt_data[["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]]
 y = dt_data["Growth_Label"]
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=1
-)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
 
 clf = DecisionTreeClassifier(max_depth=4, random_state=1)
 clf.fit(X_train, y_train)
@@ -123,10 +121,11 @@ pred = clf.predict(X_test)
 
 st.write(f"Decision Tree Accuracy: **{accuracy_score(y_test, pred):.2f}**")
 
-importance = pd.Series(clf.feature_importances_, index=features)
+importance = pd.Series(clf.feature_importances_, index=X.columns)
 
 fig2, ax2 = plt.subplots(figsize=(7, 4))
 sns.barplot(x=importance.values, y=importance.index, ax=ax2)
 ax2.set_title("Feature Importance")
 st.pyplot(fig2)
+
 
