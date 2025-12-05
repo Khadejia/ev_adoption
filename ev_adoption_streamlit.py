@@ -61,13 +61,12 @@ if not trend.empty:
 else:
     st.info("No historical trend available.")
 
-
 st.markdown("---")
 st.header("EV Adoption: Infrastructure, Income, and Incentives")
 
 subset = df[df["year"].isin([2022, 2023])].copy()
 
-# Define clusters
+# Define clusters manually
 high_adoption = ["California", "Washington", "Oregon"]
 medium_adoption = ["Florida", "Virginia", "Colorado"]
 low_adoption = ["Mississippi", "West Virginia"]
@@ -83,9 +82,9 @@ def assign_cluster(state):
         return None
 
 subset["Cluster"] = subset["state"].apply(assign_cluster)
-subset = subset[subset["Cluster"].notna()].copy()  # Only include clustered states
+subset = subset[subset["Cluster"].notna()].copy()  # Only clustered states
 
-cluster_colors = {1: "green", 2: "yellow", 3: "red"}
+cluster_colors = {1: "green", 2: "yellow", 3: "red"}  # Cluster color map
 
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
@@ -97,18 +96,17 @@ for year in [2022, 2023]:
     st.subheader(f"EV Adoption by Cluster — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Plot each point with a number label
-    for idx, row in enumerate(year_data.iterrows(), 1):
-        row = row[1]  # iterrows() returns (index, Series)
-        ax.scatter(
-            row["Stations"],
-            row["EV Share (%)"],
-            s=200,
-            color=cluster_colors[row["Cluster"]],
-            edgecolor="black",
-            alpha=0.7
-        )
-        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], str(idx), fontsize=10, weight="bold")
+    # Scatter plot of EV Share vs Charging Stations
+    sns.scatterplot(
+        data=year_data,
+        x="Stations",
+        y="EV Share (%)",
+        hue="Cluster",
+        palette=cluster_colors,
+        s=200,
+        ax=ax,
+        legend=False  # We'll add a custom legend below
+    )
 
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
@@ -125,12 +123,12 @@ for year in [2022, 2023]:
 
     st.pyplot(fig)
 
-    # List states with number mapping
-    st.write("**States included in the plot (number corresponds to dot on chart):**")
-    for idx, row in enumerate(year_data.iterrows(), 1):
-        row = row[1]
-        cluster_label = "High" if row["Cluster"]==1 else "Medium" if row["Cluster"]==2 else "Low"
-        st.write(f"{idx}: {row['state']} ({cluster_label}-Adoption)")
+    # List states at the bottom grouped by cluster
+    st.write("**States included in the plot:**")
+    st.write(f"**High-Adoption:** {', '.join(high_adoption)}")
+    st.write(f"**Medium-Adoption:** {', '.join(medium_adoption)}")
+    st.write(f"**Low-Adoption:** {', '.join(low_adoption)}")
+
 
 
 
