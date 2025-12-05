@@ -79,8 +79,8 @@ X = subset[features].apply(pd.to_numeric, errors="coerce").dropna()
 # Set number of clusters <= number of rows
 n_clusters = min(2, len(X))
 
-# Fit KMeans
-kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+# Fit KMeans with explicit n_init to avoid scikit-learn >=1.4 errors
+kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
 subset.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
 
 # Plot
@@ -95,8 +95,6 @@ sns.scatterplot(
 )
 ax1.set_title("Clusters: EV Share vs. Charging Stations")
 st.pyplot(fig1)
-
-
 
 
 st.markdown("---")
