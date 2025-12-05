@@ -72,16 +72,17 @@ subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
 
 # Select numeric features
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
-
-# Ensure all values are numeric
 X = subset[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-# Set number of clusters <= number of rows
+# Use 1 cluster if dataset is too small
 n_clusters = min(2, len(X))
 
-# Fit KMeans with explicit n_init to avoid scikit-learn >=1.4 errors
-kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
-subset.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
+# Fit KMeans safely
+if n_clusters >= 1:
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
+    subset.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
+else:
+    subset["Cluster"] = 0  # fallback for empty dataset
 
 # Plot
 fig1, ax1 = plt.subplots(figsize=(7, 5))
