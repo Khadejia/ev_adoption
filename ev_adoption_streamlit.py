@@ -63,51 +63,67 @@ else:
 
 
 st.markdown("---")
-st.header("EV Scatter by Year (K-Means simplified)")
+st.header("EV Adoption Clusters by Year")
 
 subset = df[df["year"].isin([2022, 2023])].copy()
 subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
 
+# Define a palette for 3 clusters
+palette = {0: "red", 1: "yellow", 2: "green"}  # Red = Low, Yellow = Medium, Green = High
+
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
     X = year_data[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-    st.subheader(f"EV Scatter for {year}")
-
     if len(X) < 2:
-        # Too few rows for K-Means, just plot points by state
-        fig, ax = plt.subplots(figsize=(7, 5))
+        # Too few rows, plot points by state instead of K-Means
+        st.subheader(f"EV Scatter for {year} (no clustering)")
+        fig, ax = plt.subplots(figsize=(8, 6))
         sns.scatterplot(
             data=year_data,
             x="Stations",
             y="EV Share (%)",
             hue="state",
-            style="Incentives",
-            s=100,
-            ax=ax
+            s=200,
+            ax=ax,
+            legend=False
         )
-        ax.set_title(f"EV Share vs. Stations — {year}")
+        for i, row in year_data.iterrows():
+            ax.text(row["Stations"] + 0.2, row["EV Share (%)"], row["state"], fontsize=10)
+        ax.set_title(f"EV Share vs Charging Stations — {year}")
+        ax.set_xlabel("Charging Stations")
+        ax.set_ylabel("EV Share (%)")
         st.pyplot(fig)
         continue
 
-    # Otherwise, do K-Means with 2 clusters max
-    n_clusters = min(2, len(X))
+    # Use K-Means clustering
+    n_clusters = min(3, len(X))  # max 3 clusters, but not more than number of points
     kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
     year_data.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    st.subheader(f"K-Means Clusters for {year}")
+    fig, ax = plt.subplots(figsize=(8, 6))
     sns.scatterplot(
         data=year_data,
         x="Stations",
         y="EV Share (%)",
         hue="Cluster",
-        palette="deep",
-        s=100,
-        ax=ax
+        palette=palette,
+        s=200,
+        ax=ax,
+        legend="full"
     )
-    ax.set_title(f"EV Share vs. Stations — {year}")
+
+    # Add state labels
+    for i, row in year_data.iterrows():
+        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], row["state"], fontsize=10)
+
+    ax.set_title(f"EV Share vs Charging Stations — {year}")
+    ax.set_xlabel("Charging Stations")
+    ax.set_ylabel("EV Share (%)")
     st.pyplot(fig)
+
 
 
 
