@@ -65,23 +65,19 @@ else:
 st.markdown("---")
 st.header("K-Means Clustering by Year")
 
-subset = df.copy()
+# Only consider 2022 and 2023
+subset = df[df["year"].isin([2022, 2023])].copy()
 
-# Convert categorical to numeric
 subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
-
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
 
-for year in sorted(subset["year"].unique()):
+for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
     X = year_data[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-    # Skip if no data
     if len(X) == 0:
-        st.warning(f"No data for year {year}")
-        continue
+        continue  # skip if no data
 
-    # Ensure number of clusters <= number of rows
     n_clusters = min(2, len(X))
     kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
     year_data.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
@@ -98,6 +94,7 @@ for year in sorted(subset["year"].unique()):
     )
     ax.set_title(f"EV Share vs. Stations — {year}")
     st.pyplot(fig)
+
 
 
 st.markdown("---")
