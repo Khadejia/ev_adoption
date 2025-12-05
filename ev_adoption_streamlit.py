@@ -93,10 +93,16 @@ st.header("Decision Tree Classification (Growth Groups)")
 
 subset["Growth"] = subset.groupby("state")["EV Registrations"].diff().fillna(0)
 
+median_growth = subset["Growth"].median()
+
+# if median is 0, nudge it slightly
+if median_growth == 0:
+    median_growth = 0.00001
+
 subset["Growth_Label"] = pd.cut(
     subset["Growth"],
-    bins=[-float("inf"), 0, subset["Growth"].median(), float("inf")],
-    labels=["Low", "Medium", "High"],
+    bins=[-float("inf"), 0, median_growth, float("inf")],
+    labels=["Low", "Medium", "High"]
 )
 
 dt_data = subset.dropna(subset=features + ["Growth_Label"])
