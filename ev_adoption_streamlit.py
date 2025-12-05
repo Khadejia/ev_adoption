@@ -86,8 +86,8 @@ def assign_cluster(state):
 subset["Cluster"] = subset["state"].apply(assign_cluster)
 subset = subset[subset["Cluster"].notna()].copy()  # Remove uncategorized
 
-# Map cluster colors
-cluster_colors = {1: "green", 2: "yellow", 3: "red"}
+# Cluster colors
+cluster_colors = {1: "green", 2: "yellow", 3: "red"}  # 1=High,2=Medium,3=Low
 
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
@@ -99,40 +99,45 @@ for year in [2022, 2023]:
     st.subheader(f"EV Adoption by Cluster — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Scatter plot: size = income, color = cluster, marker = incentive
-    for _, row in year_data.iterrows():
-        marker_style = "o" if row["Incentives"] == "Yes" else "X"
-        ax.scatter(
-            row["Stations"],
-            row["EV Share (%)"],
-            s=row["Per_Cap_Income"] / 500,  # scale income for point size
-            color=cluster_colors[row["Cluster"]],
-            alpha=0.7,
-            edgecolor="black",
-            marker=marker_style,
-            label=row["state"]
-        )
-        # Add state label
-        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], row["state"], fontsize=9)
+    # Plot points without state labels
+    sns.scatterplot(
+        data=year_data,
+        x="Stations",
+        y="EV Share (%)",
+        hue="Cluster",
+        palette=cluster_colors,
+        s=200,
+        ax=ax,
+        legend="full"
+    )
 
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
     ax.set_ylabel("EV Share (%)")
     
-    # Create custom legend
+    # Custom legend
     import matplotlib.patches as mpatches
     cluster_patches = [
         mpatches.Patch(color="green", label="High-Adoption"),
         mpatches.Patch(color="yellow", label="Medium-Adoption"),
         mpatches.Patch(color="red", label="Low-Adoption"),
     ]
-    incentive_patches = [
-        mpatches.Patch(facecolor="white", edgecolor="black", label="No Incentive"),
-        mpatches.Patch(facecolor="black", label="Incentive")
-    ]
     ax.legend(handles=cluster_patches, title="Cluster", loc="upper left")
     
     st.pyplot(fig)
+
+    # List states at the bottom
+    st.write("**States included in the plot:**")
+    for cluster in sorted(year_data["Cluster"].unique()):
+        states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
+        if cluster == 1:
+            label = "High-Adoption"
+        elif cluster == 2:
+            label = "Medium-Adoption"
+        elif cluster == 3:
+            label = "Low-Adoption"
+        st.write(f"{label}: {', '.join(states_in_cluster)}")
+
 
 
 
