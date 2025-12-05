@@ -82,16 +82,23 @@ def assign_cluster(state):
     elif state in low_adoption:
         return 3  # Low
     else:
-        return 0  # Uncategorized
+        return None  # Uncategorized
 
 subset["Cluster"] = subset["state"].apply(assign_cluster)
 
+# Remove Uncategorized states
+subset = subset[subset["Cluster"].notna()].copy()
+
 # Define colors for clusters
-cluster_colors = {1: "green", 2: "yellow", 3: "red", 0: "gray"}  # 1=High,2=Medium,3=Low
+cluster_colors = {1: "green", 2: "yellow", 3: "red"}  # 1=High,2=Medium,3=Low
 
 # Plot per year
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
+    
+    if year_data.empty:
+        st.warning(f"No clustered states for {year}")
+        continue
     
     st.subheader(f"EV Adoption Clusters — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -107,25 +114,22 @@ for year in [2022, 2023]:
         legend="full"
     )
     
+    # Label each state on the plot
+    for i, row in year_data.iterrows():
+        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], row["state"], fontsize=10)
+    
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
     ax.set_ylabel("EV Share (%)")
     st.pyplot(fig)
     
-    # Show states per cluster
+    # Show states per cluster as a small table
     st.write("**States in each cluster:**")
     for cluster in sorted(year_data["Cluster"].unique()):
         states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
         if cluster == 1:
             label = "High-Adoption"
-        elif cluster == 2:
-            label = "Medium-Adoption"
-        elif cluster == 3:
-            label = "Low-Adoption"
-        else:
-            label = "Uncategorized"
-        st.write(f"{label}: {', '.join(states_in_cluster)}")
-
+        elif
 
 
 st.markdown("---")
