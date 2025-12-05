@@ -65,10 +65,9 @@ else:
 st.markdown("---")
 st.header("EV Adoption: Infrastructure, Income, and Incentives")
 
-# Filter for clustered states
 subset = df[df["year"].isin([2022, 2023])].copy()
 
-# Define clusters manually
+# Define clusters
 high_adoption = ["California", "Washington", "Oregon"]
 medium_adoption = ["Florida", "Virginia", "Colorado"]
 low_adoption = ["Mississippi", "West Virginia"]
@@ -84,10 +83,9 @@ def assign_cluster(state):
         return None
 
 subset["Cluster"] = subset["state"].apply(assign_cluster)
-subset = subset[subset["Cluster"].notna()].copy()  # Remove uncategorized
+subset = subset[subset["Cluster"].notna()].copy()  # Only include clustered states
 
-# Cluster colors
-cluster_colors = {1: "green", 2: "yellow", 3: "red"}  # 1=High,2=Medium,3=Low
+cluster_colors = {1: "green", 2: "yellow", 3: "red"}
 
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
@@ -99,23 +97,23 @@ for year in [2022, 2023]:
     st.subheader(f"EV Adoption by Cluster — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Plot points without state labels
-    sns.scatterplot(
-        data=year_data,
-        x="Stations",
-        y="EV Share (%)",
-        hue="Cluster",
-        palette=cluster_colors,
-        s=200,
-        ax=ax,
-        legend="full"
-    )
+    # Plot each point with a small number
+    for idx, row in enumerate(year_data.itertuples(), 1):
+        ax.scatter(
+            row.Stations,
+            row._3,  # EV Share (%)
+            s=200,
+            color=cluster_colors[row.Cluster],
+            edgecolor="black",
+            alpha=0.7
+        )
+        ax.text(row.Stations + 0.2, row._3, str(idx), fontsize=10, weight="bold")
 
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
     ax.set_ylabel("EV Share (%)")
-    
-    # Custom legend
+
+    # Custom cluster legend
     import matplotlib.patches as mpatches
     cluster_patches = [
         mpatches.Patch(color="green", label="High-Adoption"),
@@ -123,20 +121,13 @@ for year in [2022, 2023]:
         mpatches.Patch(color="red", label="Low-Adoption"),
     ]
     ax.legend(handles=cluster_patches, title="Cluster", loc="upper left")
-    
+
     st.pyplot(fig)
 
-    # List states at the bottom
-    st.write("**States included in the plot:**")
-    for cluster in sorted(year_data["Cluster"].unique()):
-        states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
-        if cluster == 1:
-            label = "High-Adoption"
-        elif cluster == 2:
-            label = "Medium-Adoption"
-        elif cluster == 3:
-            label = "Low-Adoption"
-        st.write(f"{label}: {', '.join(states_in_cluster)}")
+    # List states with their number at the bottom
+    st.write("**States included in the plot (number corresponds to dot on chart):**")
+    for idx, row in enumerate(year_data.itertuples(), 1):
+        st.write(f"{idx}: {row.state} ({'High' if row.Cluster==1 else 'Medium' if row.Cluster==2 else 'Low'}-Adoption)")
 
 
 
