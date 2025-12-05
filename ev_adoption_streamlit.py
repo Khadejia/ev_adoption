@@ -63,77 +63,78 @@ else:
 
 
 st.markdown("---")
-st.header("EV Adoption Clusters by Year (Manual Mapping)")
+st.header("EV Adoption: Infrastructure, Income, and Incentives")
 
-# Filter dataset for 2022–2023
+# Filter for clustered states
 subset = df[df["year"].isin([2022, 2023])].copy()
 
-# Define clusters manually based on your description
+# Define clusters manually
 high_adoption = ["California", "Washington", "Oregon"]
 medium_adoption = ["Florida", "Virginia", "Colorado"]
 low_adoption = ["Mississippi", "West Virginia"]
 
-# Function to assign cluster
 def assign_cluster(state):
     if state in high_adoption:
-        return 1  # High
+        return 1
     elif state in medium_adoption:
-        return 2  # Medium
+        return 2
     elif state in low_adoption:
-        return 3  # Low
+        return 3
     else:
-        return None  # Uncategorized
+        return None
 
 subset["Cluster"] = subset["state"].apply(assign_cluster)
+subset = subset[subset["Cluster"].notna()].copy()  # Remove uncategorized
 
-# Remove Uncategorized states
-subset = subset[subset["Cluster"].notna()].copy()
+# Map cluster colors
+cluster_colors = {1: "green", 2: "yellow", 3: "red"}
 
-# Define colors for clusters
-cluster_colors = {1: "green", 2: "yellow", 3: "red"}  # 1=High,2=Medium,3=Low
-
-# Plot per year
 for year in [2022, 2023]:
     year_data = subset[subset["year"] == year].copy()
     
     if year_data.empty:
         st.warning(f"No clustered states for {year}")
         continue
-    
-    st.subheader(f"EV Adoption Clusters — {year}")
+
+    st.subheader(f"EV Adoption by Cluster — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
-    
-    sns.scatterplot(
-        data=year_data,
-        x="Stations",
-        y="EV Share (%)",
-        hue="Cluster",
-        palette=cluster_colors,
-        s=200,
-        ax=ax,
-        legend="full"
-    )
-    
-    # Label each state on the plot
-    for i, row in year_data.iterrows():
-        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], row["state"], fontsize=10)
-    
+
+    # Scatter plot: size = income, color = cluster, marker = incentive
+    for _, row in year_data.iterrows():
+        marker_style = "o" if row["Incentives"] == "Yes" else "X"
+        ax.scatter(
+            row["Stations"],
+            row["EV Share (%)"],
+            s=row["Per_Cap_Income"] / 500,  # scale income for point size
+            color=cluster_colors[row["Cluster"]],
+            alpha=0.7,
+            edgecolor="black",
+            marker=marker_style,
+            label=row["state"]
+        )
+        # Add state label
+        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], row["state"], fontsize=9)
+
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
     ax.set_ylabel("EV Share (%)")
-    st.pyplot(fig)
     
-# Show states per cluster as a small table
-st.write("**States in each cluster:**")
-for cluster in sorted(year_data["Cluster"].unique()):
-    states_in_cluster = year_data[year_data["Cluster"] == cluster]["state"].tolist()
-    if cluster == 1:
-        label = "High-Adoption"
-    elif cluster == 2:
-        label = "Medium-Adoption"
-    elif cluster == 3:
-        label = "Low-Adoption"
-    st.write(f"{label}: {', '.join(states_in_cluster)}")
+    # Create custom legend
+    import matplotlib.patches as mpatches
+    cluster_patches = [
+        mpatches.Patch(color="green", label="High-Adoption"),
+        mpatches.Patch(color="yellow", label="Medium-Adoption"),
+        mpatches.Patch(color="red", label="Low-Adoption"),
+    ]
+    incentive_patches = [
+        mpatches.Patch(facecolor="white", edgecolor="black", label="No Incentive"),
+        mpatches.Patch(facecolor="black", label="Incentive")
+    ]
+    ax.legend(handles=cluster_patches, title="Cluster", loc="upper left")
+    
+    st.pyplot(fig)
+
+
 
 
 
