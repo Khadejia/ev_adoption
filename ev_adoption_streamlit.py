@@ -130,7 +130,6 @@ for year in [2022, 2023]:
     st.write(f"**Low-Adoption:** {', '.join(low_adoption)}")
 
 
-
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth")
 
@@ -210,3 +209,4 @@ for year in [2022, 2023]:
         "Growth_Label": "Growth Category"
     })
     st.dataframe(display_table)
+
