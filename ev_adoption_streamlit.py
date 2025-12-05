@@ -63,39 +63,41 @@ else:
 
 
 st.markdown("---")
-st.header("K-Means Clustering (2022–2023)")
+st.header("K-Means Clustering by Year")
 
-subset = df[df["year"].isin([2022, 2023])].copy()
+subset = df.copy()
 
 # Convert categorical to numeric
 subset["Incentives_Num"] = subset["Incentives"].map({"Yes": 1, "No": 0})
 
-# Select numeric features
 features = ["EV Share (%)", "Stations", "Per_Cap_Income", "Incentives_Num"]
-X = subset[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-# Use 1 cluster if dataset is too small
-n_clusters = min(2, len(X))
+for year in sorted(subset["year"].unique()):
+    year_data = subset[subset["year"] == year].copy()
+    X = year_data[features].apply(pd.to_numeric, errors="coerce").dropna()
 
-# Fit KMeans safely
-if n_clusters >= 1:
+    # Skip if no data
+    if len(X) == 0:
+        st.warning(f"No data for year {year}")
+        continue
+
+    # Ensure number of clusters <= number of rows
+    n_clusters = min(2, len(X))
     kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
-    subset.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
-else:
-    subset["Cluster"] = 0  # fallback for empty dataset
+    year_data.loc[X.index, "Cluster"] = kmeans.fit_predict(X)
 
-# Plot
-fig1, ax1 = plt.subplots(figsize=(7, 5))
-sns.scatterplot(
-    data=subset,
-    x="Stations",
-    y="EV Share (%)",
-    hue="Cluster",
-    palette="deep",
-    ax=ax1
-)
-ax1.set_title("Clusters: EV Share vs. Charging Stations")
-st.pyplot(fig1)
+    st.subheader(f"K-Means Clusters for {year}")
+    fig, ax = plt.subplots(figsize=(7, 5))
+    sns.scatterplot(
+        data=year_data,
+        x="Stations",
+        y="EV Share (%)",
+        hue="Cluster",
+        palette="deep",
+        ax=ax
+    )
+    ax.set_title(f"EV Share vs. Stations — {year}")
+    st.pyplot(fig)
 
 
 st.markdown("---")
