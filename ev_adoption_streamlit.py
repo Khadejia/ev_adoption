@@ -91,7 +91,7 @@ st.pyplot(fig1)
 st.markdown("---")
 st.header("Decision Tree Classification (Growth Groups)")
 
-s# Compute growth
+
 subset["Growth"] = subset.groupby("state")["EV Registrations"].diff().fillna(0)
 
 # Calculate quantiles (instead of bins)
