@@ -97,17 +97,18 @@ for year in [2022, 2023]:
     st.subheader(f"EV Adoption by Cluster — {year}")
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Plot each point with a small number
-    for idx, row in enumerate(year_data.itertuples(), 1):
+    # Plot each point with a number label
+    for idx, row in enumerate(year_data.iterrows(), 1):
+        row = row[1]  # iterrows() returns (index, Series)
         ax.scatter(
-            row.Stations,
-            row._3,  # EV Share (%)
+            row["Stations"],
+            row["EV Share (%)"],
             s=200,
-            color=cluster_colors[row.Cluster],
+            color=cluster_colors[row["Cluster"]],
             edgecolor="black",
             alpha=0.7
         )
-        ax.text(row.Stations + 0.2, row._3, str(idx), fontsize=10, weight="bold")
+        ax.text(row["Stations"] + 0.2, row["EV Share (%)"], str(idx), fontsize=10, weight="bold")
 
     ax.set_title(f"EV Share vs Charging Stations — {year}")
     ax.set_xlabel("Charging Stations")
@@ -124,12 +125,12 @@ for year in [2022, 2023]:
 
     st.pyplot(fig)
 
-    # List states with their number at the bottom
+    # List states with number mapping
     st.write("**States included in the plot (number corresponds to dot on chart):**")
-    for idx, row in enumerate(year_data.itertuples(), 1):
-        st.write(f"{idx}: {row.state} ({'High' if row.Cluster==1 else 'Medium' if row.Cluster==2 else 'Low'}-Adoption)")
-
-
+    for idx, row in enumerate(year_data.iterrows(), 1):
+        row = row[1]
+        cluster_label = "High" if row["Cluster"]==1 else "Medium" if row["Cluster"]==2 else "Low"
+        st.write(f"{idx}: {row['state']} ({cluster_label}-Adoption)")
 
 
 
