@@ -168,16 +168,18 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         labels=["Low", "Medium", "High"]
     )
 
-    # Features for model (current year)
+  # Features for model (current year)
     all_features = numeric_cols[1:]  # Exclude EV Registrations
-    features = [f for f in all_features if growth_df[f].var() > 0]
+    features = all_features  # keep all even if variance = 0
 
-    if not features:
-        st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
+# Prevent model crash if all features constant
+    if growth_df[features].var().sum() == 0:
+        st.warning(f"All features have zero variance for {curr_year}. Skipping Decision Tree.")
         return
 
     X = growth_df[features]
     y = growth_df["Growth_Label"]
+
 
     # Train Decision Tree
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
