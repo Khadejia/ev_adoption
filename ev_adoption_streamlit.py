@@ -151,12 +151,12 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         all_states, on="state", how="right"
     )
     
-    # Fill missing numeric values with the mean of that column
+    # Fill missing numeric values with 0 (ensures blank features get numbers)
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", 
                     "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
     for col in numeric_cols:
-        prev_data[col] = prev_data[col].fillna(prev_data[col].mean())
-        curr_data[col] = curr_data[col].fillna(curr_data[col].mean())
+        prev_data[col] = prev_data[col].fillna(0)
+        curr_data[col] = curr_data[col].fillna(0)
 
     # Calculate growth
     growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations",
@@ -170,15 +170,7 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
                                        labels=["Low", "Medium", "High"])
     
     # Features for model (current year)
-    all_features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
-    
-    # Only keep features with variance > 0 to avoid blank bars
-    features = [f for f in all_features if curr_data[f].var() > 0]
-    
-    if not features:
-        st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
-        return
-    
+    features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
     X = growth_df[features]
     y = growth_df["Growth_Label"]
     
@@ -208,3 +200,4 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
 decision_tree_growth(prev_year=2022, curr_year=2023, cluster_states=cluster_states)
+
