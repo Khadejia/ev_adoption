@@ -133,7 +133,7 @@ for year in [2022, 2023]:
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth 2022 vs 2023")
 
-def decision_tree_growth(prev_year, curr_year):
+def decision_tree_growth(prev_year, curr_year, cluster_states):
     # Ensure all clustered states are included
     all_states = pd.DataFrame({"state": cluster_states})
     
@@ -184,8 +184,9 @@ def decision_tree_growth(prev_year, curr_year):
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
 
 # Generate Decision Trees
-decision_tree_growth(prev_year=2021, curr_year=2022)
+decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
-decision_tree_growth(prev_year=2022, curr_year=2023)
+decision_tree_growth(prev_year=2022, curr_year=2023, cluster_states=cluster_states)
+
 
 
