@@ -151,17 +151,24 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         all_states, on="state", how="right"
     )
     
-    # Fill missing numeric values with mean
-    numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
- # Fill missing numeric values
-    for col in numeric_cols:
-    # If all values are missing, fill with a small default value (1 or median of other years)
-        if df[col].notna().sum() == 0:
-            prev_data[col] = 1
-            curr_data[col] = 1
-        else:
-            prev_data[col] = prev_data[col].fillna(prev_data[col].median())
-            curr_data[col] = curr_data[col].fillna(curr_data[col].median())
+# Define reasonable defaults for missing features per year
+defaults = {
+    2022: {"Incentives": 1000, "gasoline_price_per_gallon": 3.50},  # example default
+    2023: {"Per_Cap_Income": 45000, "Incentives": 1200, "gasoline_price_per_gallon": 3.80}
+}
+
+# Fill missing numeric values using defaults if column is missing entirely
+for col in numeric_cols:
+    if prev_data[col].isna().all():  # entire column missing
+        prev_data[col] = defaults.get(prev_year, {}).get(col, 1)  # fallback to 1
+    else:
+        prev_data[col] = prev_data[col].fillna(prev_data[col].median())
+        
+    if curr_data[col].isna().all():
+        curr_data[col] = defaults.get(curr_year, {}).get(col, 1)
+    else:
+        curr_data[col] = curr_data[col].fillna(curr_data[col].median())
+
 
     
     # Calculate growth
