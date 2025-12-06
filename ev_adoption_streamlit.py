@@ -151,12 +151,11 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         all_states, on="state", how="right"
     )
     
-    # Fill missing numeric values with 0
+    # Fill missing numeric values with mean
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
     for col in numeric_cols:
-      prev_data[col] = prev_data[col].fillna(prev_data[col].mean())
-      curr_data[col] = curr_data[col].fillna(curr_data[col].mean())
-
+        prev_data[col] = prev_data[col].fillna(prev_data[col].mean())
+        curr_data[col] = curr_data[col].fillna(curr_data[col].mean())
     
     # Calculate growth
     growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations", 
@@ -168,21 +167,20 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     q2 = growth_df["Growth"].quantile(0.66)
     growth_df["Growth_Label"] = pd.cut(growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
                                        labels=["Low", "Medium", "High"])
-  
-# Features for model (current year)
-all_features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
-X = growth_df[all_features]
-y = growth_df["Growth_Label"]
+    
+    # Features for model (current year)
+    all_features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
+    X = growth_df[all_features]
+    y = growth_df["Growth_Label"]
+    
+    # Only keep features with variance > 0 to avoid blank bars in plot
+    features = [f for f in all_features if X[f].var() > 0]
 
-# Only keep features with variance > 0 to avoid blank bars in plot
-features = [f for f in all_features if X[f].var() > 0]
+    if not features:
+        st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
+        return
 
-if not features:
-    st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
-    return
-
-X = X[features]  # Keep only valid features
-
+    X = X[features]  # Keep only valid features
     
     # Train Decision Tree
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
@@ -205,6 +203,7 @@ X = X[features]  # Keep only valid features
     })
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
+
 
 # --- Generate Decision Trees ---
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
