@@ -168,11 +168,21 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     q2 = growth_df["Growth"].quantile(0.66)
     growth_df["Growth_Label"] = pd.cut(growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
                                        labels=["Low", "Medium", "High"])
-    
-    # Features for model (current year)
-    features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
-    X = growth_df[features]
-    y = growth_df["Growth_Label"]
+  
+# Features for model (current year)
+all_features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
+X = growth_df[all_features]
+y = growth_df["Growth_Label"]
+
+# Only keep features with variance > 0 to avoid blank bars in plot
+features = [f for f in all_features if X[f].var() > 0]
+
+if not features:
+    st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
+    return
+
+X = X[features]  # Keep only valid features
+
     
     # Train Decision Tree
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
