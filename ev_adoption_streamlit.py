@@ -141,7 +141,6 @@ cluster_states = high_adoption + medium_adoption + low_adoption
 
 # --- Function to create Decision Tree per year ---
 def decision_tree_growth(prev_year, curr_year, cluster_states):
-    # Ensure all clustered states are included
     all_states = pd.DataFrame({"state": cluster_states})
     
     prev_data = df[(df["year"] == prev_year) & df["state"].isin(cluster_states)].merge(
@@ -151,33 +150,37 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         all_states, on="state", how="right"
     )
     
-    # Fill missing numeric values with 0 (ensures blank features get numbers)
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", 
                     "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
     for col in numeric_cols:
         prev_data[col] = prev_data[col].fillna(0)
         curr_data[col] = curr_data[col].fillna(0)
 
+    # Add small jitter to zero-variance columns to avoid blank plots
+    for col in numeric_cols:
+        if curr_data[col].var() == 0:
+            curr_data[col] += 1e-5
+
     # Calculate growth
     growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations",
                            "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]].copy()
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
-    
+
     # Growth labels
     q1 = growth_df["Growth"].quantile(0.33)
     q2 = growth_df["Growth"].quantile(0.66)
     growth_df["Growth_Label"] = pd.cut(growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
                                        labels=["Low", "Medium", "High"])
-    
-    # Features for model (current year)
+
+    # Features for model
     features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
     X = growth_df[features]
     y = growth_df["Growth_Label"]
-    
+
     # Train Decision Tree
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
     clf.fit(X, y)
-    
+
     # Feature importance plot
     importance = pd.Series(clf.feature_importances_, index=features)
     fig, ax = plt.subplots(figsize=(7, 4))
@@ -186,8 +189,8 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     ax.set_xlabel("Importance")
     ax.set_ylabel("Feature")
     st.pyplot(fig)
-    
-    # Display table with titles
+
+    # Display table
     display_table = growth_df[["state", "Growth", "Growth_Label"]].rename(columns={
         "state": "State",
         "Growth": "EV Registration Growth",
@@ -196,7 +199,6 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
 
-# --- Generate Decision Trees ---
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
 decision_tree_growth(prev_year=2022, curr_year=2023, cluster_states=cluster_states)
