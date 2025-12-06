@@ -131,7 +131,7 @@ for year in [2022, 2023]:
 
 
 st.markdown("---")
-st.header("Decision Tree Classification: EV Growth 2022 vs 2023")
+st.header("Decision Tree Classification: EV Growth")
 
 # Define clustered states
 high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
