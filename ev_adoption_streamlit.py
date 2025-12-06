@@ -139,29 +139,31 @@ medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "T
 low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
 cluster_states = high_adoption + medium_adoption + low_adoption
 
+# --- Function to create Decision Tree per year ---
 def decision_tree_growth(prev_year, curr_year, cluster_states):
+    # Ensure all clustered states are included
     all_states = pd.DataFrame({"state": cluster_states})
     
-    # Filter only clustered states for each year
-    prev_data = df[(df["year"] == prev_year) & df["state"].isin(cluster_states)].merge(all_states, on="state", how="right")
-    curr_data = df[(df["year"] == curr_year) & df["state"].isin(cluster_states)].merge(all_states, on="state", how="right")
+    prev_data = df[(df["year"] == prev_year) & df["state"].isin(cluster_states)].merge(
+        all_states, on="state", how="right"
+    )
+    curr_data = df[(df["year"] == curr_year) & df["state"].isin(cluster_states)].merge(
+        all_states, on="state", how="right"
+    )
     
-    # Fill missing numeric values per year
+    # Fill missing numeric values with mean; if mean is NaN (all missing), fill with 0
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", 
                     "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
-    
     for col in numeric_cols:
         prev_mean = prev_data[col].mean()
         prev_data[col] = prev_data[col].fillna(prev_mean if not pd.isna(prev_mean) else 0)
         
         curr_mean = curr_data[col].mean()
         curr_data[col] = curr_data[col].fillna(curr_mean if not pd.isna(curr_mean) else 0)
-    
-    # Include all columns from the original dataframe
-    all_cols = df.columns.tolist()
-    growth_df = curr_data[all_cols].copy()
-    
-    # Calculate growth only for EV Registrations
+
+    # Calculate growth
+    growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations",
+                           "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]].copy()
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
     
     # Growth labels
@@ -170,8 +172,16 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     growth_df["Growth_Label"] = pd.cut(growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
                                        labels=["Low", "Medium", "High"])
     
-    # Features for model (only numeric columns)
-    features = numeric_cols.copy()
+    # Features for model (current year)
+    all_features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
+    
+    # Only keep features with variance > 0
+    features = [f for f in all_features if growth_df[f].var() > 0]
+    
+    if not features:
+        st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
+        return
+    
     X = growth_df[features]
     y = growth_df["Growth_Label"]
     
@@ -188,16 +198,14 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     ax.set_ylabel("Feature")
     st.pyplot(fig)
     
-    # Display table with all columns plus growth info
-    display_table = growth_df.copy()
-    display_table = display_table.rename(columns={
+    # Display table with titles
+    display_table = growth_df[["state", "Growth", "Growth_Label"]].rename(columns={
         "state": "State",
         "Growth": "EV Registration Growth",
         "Growth_Label": "Growth Category"
     })
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
-
 
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
