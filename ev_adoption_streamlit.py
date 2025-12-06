@@ -133,77 +133,93 @@ for year in [2022, 2023]:
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth 2022 vs 2023")
 
-# --- Define clustered states ---
+# Cluster sets
 high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
 medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "Texas"]
 low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
 cluster_states = high_adoption + medium_adoption + low_adoption
 
 def decision_tree_growth(prev_year, curr_year, cluster_states):
-    # Only use data from 2022 and 2023
+    # Use only selected years + selected states
     df_years = df[df["year"].isin([prev_year, curr_year]) & df["state"].isin(cluster_states)].copy()
 
-    # Ensure all clustered states are included
+    # Keep all states even if data missing
     all_states = pd.DataFrame({"state": cluster_states})
     prev_data = df_years[df_years["year"] == prev_year].merge(all_states, on="state", how="right")
     curr_data = df_years[df_years["year"] == curr_year].merge(all_states, on="state", how="right")
 
-    numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", 
+    numeric_cols = ["EV Registrations", "EV Share (%)", "Stations",
                     "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
 
-    # Fill missing numeric values for each state using the same year if available, otherwise 0
+    # Fill missing numeric with column mean
     for col in numeric_cols:
         prev_data[col] = prev_data[col].fillna(prev_data[col].mean()).fillna(0)
         curr_data[col] = curr_data[col].fillna(curr_data[col].mean()).fillna(0)
 
-    # Calculate growth
+    # Compute growth
     growth_df = curr_data[["state"] + numeric_cols].copy()
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
 
-    # Growth labels
+    # Growth quantile bins
     q1 = growth_df["Growth"].quantile(0.33)
     q2 = growth_df["Growth"].quantile(0.66)
+
+    # Nudge if equal
+    if q1 == q2:
+        q2 += 0.0001
+
+    # Create labels
     growth_df["Growth_Label"] = pd.cut(
-        growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
-        labels=["Low", "Medium", "High"]
+        growth_df["Growth"],
+        bins=sorted([-float("inf"), q1, q2, float("inf")]),
+        labels=["Low", "Medium", "High"],
+        include_lowest=True
     )
 
-  # Features for model (current year)
-    all_features = numeric_cols[1:]  # Exclude EV Registrations
-    features = all_features  # keep all even if variance = 0
+    # Features (exclude EV Registrations)
+    features = numeric_cols[1:]
 
-# Prevent model crash if all features constant
+    # Prevent crash if all features constant
     if growth_df[features].var().sum() == 0:
-        st.warning(f"All features have zero variance for {curr_year}. Skipping Decision Tree.")
+        st.warning(f"All features constant. Skipping Decision Tree for {curr_year}.")
         return
 
     X = growth_df[features]
     y = growth_df["Growth_Label"]
 
-
-    # Train Decision Tree
+    # Train model
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
     clf.fit(X, y)
 
-    # Feature importance plot
-    importance = pd.Series(clf.feature_importances_, index=features)
+    # Plot importance
+    importance_series = pd.Series(clf.feature_importances_, index=features).sort_values()
+
     fig, ax = plt.subplots(figsize=(7, 4))
-    sns.barplot(x=importance.values, y=importance.index, ax=ax)
+    sns.barplot(x=importance_series.values, y=importance_series.index, ax=ax)
+
+    # Annotate values on bars
+    for i, v in enumerate(importance_series.values):
+        ax.text(v + 0.01, i, f"{v:.2f}", color="black", va="center")
+
     ax.set_title(f"Feature Importance for EV Growth Prediction ({curr_year})")
     ax.set_xlabel("Importance")
     ax.set_ylabel("Feature")
     st.pyplot(fig)
 
-    # Display table with titles
+    # Display growth table
     display_table = growth_df[["state", "Growth", "Growth_Label"]].rename(columns={
         "state": "State",
         "Growth": "EV Registration Growth",
         "Growth_Label": "Growth Category"
     })
-    st.write(f"**States and Growth Labels ({curr_year}):**")
+
+    st.write(f"**States and Growth Categories ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
 
+
+# Run for both years
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
 decision_tree_growth(prev_year=2022, curr_year=2023, cluster_states=cluster_states)
+
 
