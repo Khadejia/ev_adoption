@@ -140,12 +140,11 @@ low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisian
 
 cluster_states = high_adoption + medium_adoption + low_adoption
 
-# --- Function to create Decision Tree per year ---
 def decision_tree_growth(prev_year, curr_year):
-    # Subset data
+    # Subset only clustered states
     subset = df[df["state"].isin(cluster_states) & df["year"].isin([prev_year, curr_year])]
     
-    # --- Prepare pivot and fill missing values ---
+    # Pivot data
     pivot = subset.pivot(index="state", columns="year",
                          values=["EV Registrations", "EV Share (%)", "Stations",
                                  "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"])
@@ -153,31 +152,36 @@ def decision_tree_growth(prev_year, curr_year):
     # Flatten columns
     pivot.columns = ["_".join([col[0], str(col[1])]) for col in pivot.columns]
     
+    pivot = pivot.reset_index()
+    
+    # Ensure all required features exist
+    feature_cols = [f"Stations_{curr_year}", f"Per_Cap_Income_{curr_year}",
+                    f"Incentives_{curr_year}", f"EV Share (%)_{curr_year}",
+                    f"gasoline_price_per_gallon_{curr_year}"]
+    for col in feature_cols:
+        if col not in pivot.columns:
+            pivot[col] = 0  # Fill missing columns with 0
+    
     # Fill missing numeric values with 0
-    pivot = pivot.fillna(0)
-    pivot = pivot.reset_index()  # Keep state names
+    pivot[feature_cols] = pivot[feature_cols].fillna(0)
     
     # Calculate growth
     pivot["Growth"] = pivot[f"EV Registrations_{curr_year}"] - pivot[f"EV Registrations_{prev_year}"]
     
-    # Growth labels
+    # Assign growth labels
     q1 = pivot["Growth"].quantile(0.33)
     q2 = pivot["Growth"].quantile(0.66)
     pivot["Growth_Label"] = pd.cut(pivot["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
                                    labels=["Low", "Medium", "High"])
     
-    # Features for model
-    features = [f"Stations_{curr_year}", f"Per_Cap_Income_{curr_year}", f"Incentives_{curr_year}",
-                f"EV Share (%)_{curr_year}", f"gasoline_price_per_gallon_{curr_year}"]
-    X = pivot[features]
+    # Train Decision Tree
+    X = pivot[feature_cols]
     y = pivot["Growth_Label"]
-    
-    # --- Train Decision Tree ---
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
     clf.fit(X, y)
     
     # Feature importance plot
-    importance = pd.Series(clf.feature_importances_, index=features)
+    importance = pd.Series(clf.feature_importances_, index=feature_cols)
     fig, ax = plt.subplots(figsize=(7, 4))
     sns.barplot(x=importance.values, y=importance.index, ax=ax)
     ax.set_title(f"Feature Importance for EV Growth Prediction ({curr_year})")
@@ -185,15 +189,15 @@ def decision_tree_growth(prev_year, curr_year):
     ax.set_ylabel("Feature")
     st.pyplot(fig)
     
-    # Table of states with proper titles
-    display_table = pivot[["state", "Growth", "Growth_Label"]].copy()
-    display_table = display_table.rename(columns={
+    # Table of states
+    display_table = pivot[["state", "Growth", "Growth_Label"]].rename(columns={
         "state": "State",
         "Growth": "EV Registration Growth",
         "Growth_Label": "Growth Category"
     })
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
+
 
 # --- Generate Decision Trees for 2022 and 2023 ---
 decision_tree_growth(prev_year=2021, curr_year=2022)
