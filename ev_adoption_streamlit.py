@@ -153,9 +153,16 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     
     # Fill missing numeric values with mean
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
+ # Fill missing numeric values
     for col in numeric_cols:
-        prev_data[col] = prev_data[col].fillna(prev_data[col].mean())
-        curr_data[col] = curr_data[col].fillna(curr_data[col].mean())
+    # If all values are missing, fill with a small default value (1 or median of other years)
+        if df[col].notna().sum() == 0:
+            prev_data[col] = 1
+            curr_data[col] = 1
+        else:
+            prev_data[col] = prev_data[col].fillna(prev_data[col].median())
+            curr_data[col] = curr_data[col].fillna(curr_data[col].median())
+
     
     # Calculate growth
     growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations", 
