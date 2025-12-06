@@ -67,9 +67,9 @@ st.header("EV Adoption: Infrastructure, Income, and Incentives")
 subset = df[df["year"].isin([2022, 2023])].copy()
 
 # Define clusters manually
-high_adoption = ["California", "Washington", "Oregon"]
-medium_adoption = ["Florida", "Virginia", "Colorado"]
-low_adoption = ["Mississippi", "West Virginia"]
+high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
+medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "Texas"]
+low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
 
 def assign_cluster(state):
     if state in high_adoption:
