@@ -133,7 +133,7 @@ for year in [2022, 2023]:
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth 2022 vs 2023")
 
-# --- Define clustered states first ---
+# --- Define clustered states ---
 high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
 medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "Texas"]
 low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
@@ -151,28 +151,15 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         all_states, on="state", how="right"
     )
     
-# Define reasonable defaults for missing features per year
-defaults = {
-    2022: {"Incentives": 1000, "gasoline_price_per_gallon": 3.50},  # example default
-    2023: {"Per_Cap_Income": 45000, "Incentives": 1200, "gasoline_price_per_gallon": 3.80}
-}
+    # Fill missing numeric values with the mean of that column
+    numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", 
+                    "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
+    for col in numeric_cols:
+        prev_data[col] = prev_data[col].fillna(prev_data[col].mean())
+        curr_data[col] = curr_data[col].fillna(curr_data[col].mean())
 
-# Fill missing numeric values using defaults if column is missing entirely
-for col in numeric_cols:
-    if prev_data[col].isna().all():  # entire column missing
-        prev_data[col] = defaults.get(prev_year, {}).get(col, 1)  # fallback to 1
-    else:
-        prev_data[col] = prev_data[col].fillna(prev_data[col].median())
-        
-    if curr_data[col].isna().all():
-        curr_data[col] = defaults.get(curr_year, {}).get(col, 1)
-    else:
-        curr_data[col] = curr_data[col].fillna(curr_data[col].median())
-
-
-    
     # Calculate growth
-    growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations", 
+    growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations",
                            "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]].copy()
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
     
@@ -184,17 +171,16 @@ for col in numeric_cols:
     
     # Features for model (current year)
     all_features = ["Stations", "Per_Cap_Income", "Incentives", "EV Share (%)", "gasoline_price_per_gallon"]
-    X = growth_df[all_features]
-    y = growth_df["Growth_Label"]
     
-    # Only keep features with variance > 0 to avoid blank bars in plot
-    features = [f for f in all_features if X[f].var() > 0]
-
+    # Only keep features with variance > 0 to avoid blank bars
+    features = [f for f in all_features if curr_data[f].var() > 0]
+    
     if not features:
         st.warning(f"No valid features with variance for {curr_year}. Skipping Decision Tree.")
         return
-
-    X = X[features]  # Keep only valid features
+    
+    X = growth_df[features]
+    y = growth_df["Growth_Label"]
     
     # Train Decision Tree
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
@@ -218,12 +204,7 @@ for col in numeric_cols:
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
 
-
 # --- Generate Decision Trees ---
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
 decision_tree_growth(prev_year=2022, curr_year=2023, cluster_states=cluster_states)
-
-
-
-
