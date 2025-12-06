@@ -131,26 +131,18 @@ for year in [2022, 2023]:
 
 
 st.markdown("---")
-st.header("Decision Tree Classification: EV Growth 2022")
-
-# Define clustered states
-high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
-medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "Texas"]
-low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
-
-cluster_states = high_adoption + medium_adoption + low_adoption
+st.header("Decision Tree Classification: EV Growth 2022 vs 2023")
 
 def decision_tree_growth(prev_year, curr_year):
-    # Subset only clustered states
-    subset = df[df["state"].isin(cluster_states) & df["year"].isin([prev_year, curr_year])]
-    
-    # Ensure every clustered state exists for both years
+    # Ensure all clustered states are included
     all_states = pd.DataFrame({"state": cluster_states})
-    prev_data = subset[subset["year"] == prev_year].merge(all_states, on="state", how="right")
-    curr_data = subset[subset["year"] == curr_year].merge(all_states, on="state", how="right")
+    
+    prev_data = df[(df["year"] == prev_year) & df["state"].isin(cluster_states)].merge(all_states, on="state", how="right")
+    curr_data = df[(df["year"] == curr_year) & df["state"].isin(cluster_states)].merge(all_states, on="state", how="right")
     
     # Fill missing numeric values with 0
-    for col in ["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]:
+    numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
+    for col in numeric_cols:
         prev_data[col] = prev_data[col].fillna(0)
         curr_data[col] = curr_data[col].fillna(0)
     
@@ -158,7 +150,7 @@ def decision_tree_growth(prev_year, curr_year):
     growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]].copy()
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
     
-    # Assign growth labels
+    # Growth labels
     q1 = growth_df["Growth"].quantile(0.33)
     q2 = growth_df["Growth"].quantile(0.66)
     growth_df["Growth_Label"] = pd.cut(growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
@@ -173,7 +165,7 @@ def decision_tree_growth(prev_year, curr_year):
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
     clf.fit(X, y)
     
-    # Feature importance
+    # Feature importance plot
     importance = pd.Series(clf.feature_importances_, index=features)
     fig, ax = plt.subplots(figsize=(7, 4))
     sns.barplot(x=importance.values, y=importance.index, ax=ax)
@@ -191,8 +183,9 @@ def decision_tree_growth(prev_year, curr_year):
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
 
-# --- Generate Decision Trees for 2022 and 2023 ---
+# Generate Decision Trees
 decision_tree_growth(prev_year=2021, curr_year=2022)
 st.markdown("---")
 decision_tree_growth(prev_year=2022, curr_year=2023)
+
 
