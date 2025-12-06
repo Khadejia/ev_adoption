@@ -149,32 +149,36 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     # Fill missing numeric values per year
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", 
                     "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
+    
     for col in numeric_cols:
         prev_mean = prev_data[col].mean()
         prev_data[col] = prev_data[col].fillna(prev_mean if not pd.isna(prev_mean) else 0)
         
         curr_mean = curr_data[col].mean()
         curr_data[col] = curr_data[col].fillna(curr_mean if not pd.isna(curr_mean) else 0)
-
-    # Keep all features even if some were entirely missing (variance=0 will just make 0 importance)
-    growth_df = curr_data[["state"] + numeric_cols].copy()
+    
+    # Include all columns from the original dataframe
+    all_cols = df.columns.tolist()
+    growth_df = curr_data[all_cols].copy()
+    
+    # Calculate growth only for EV Registrations
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
-
+    
     # Growth labels
     q1 = growth_df["Growth"].quantile(0.33)
     q2 = growth_df["Growth"].quantile(0.66)
     growth_df["Growth_Label"] = pd.cut(growth_df["Growth"], bins=[-float("inf"), q1, q2, float("inf")],
                                        labels=["Low", "Medium", "High"])
-
-    # Features for model
+    
+    # Features for model (only numeric columns)
     features = numeric_cols.copy()
     X = growth_df[features]
     y = growth_df["Growth_Label"]
-
+    
     # Train Decision Tree
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
     clf.fit(X, y)
-
+    
     # Feature importance plot
     importance = pd.Series(clf.feature_importances_, index=features)
     fig, ax = plt.subplots(figsize=(7, 4))
@@ -183,9 +187,10 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     ax.set_xlabel("Importance")
     ax.set_ylabel("Feature")
     st.pyplot(fig)
-
-    # Display table
-    display_table = growth_df[["state", "Growth", "Growth_Label"]].rename(columns={
+    
+    # Display table with all columns plus growth info
+    display_table = growth_df.copy()
+    display_table = display_table.rename(columns={
         "state": "State",
         "Growth": "EV Registration Growth",
         "Growth_Label": "Growth Category"
