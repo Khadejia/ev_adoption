@@ -133,12 +133,23 @@ for year in [2022, 2023]:
 st.markdown("---")
 st.header("Decision Tree Classification: EV Growth 2022 vs 2023")
 
+# --- Define clustered states first ---
+high_adoption = ["California", "Washington", "Oregon", "New York", "Massachusetts", "New Jersey"]
+medium_adoption = ["Florida", "Virginia", "Colorado", "Michigan", "Illinois", "Texas"]
+low_adoption = ["Mississippi", "West Virginia", "Alabama", "Arkansas", "Louisiana", "Kentucky"]
+cluster_states = high_adoption + medium_adoption + low_adoption
+
+# --- Function to create Decision Tree per year ---
 def decision_tree_growth(prev_year, curr_year, cluster_states):
     # Ensure all clustered states are included
     all_states = pd.DataFrame({"state": cluster_states})
     
-    prev_data = df[(df["year"] == prev_year) & df["state"].isin(cluster_states)].merge(all_states, on="state", how="right")
-    curr_data = df[(df["year"] == curr_year) & df["state"].isin(cluster_states)].merge(all_states, on="state", how="right")
+    prev_data = df[(df["year"] == prev_year) & df["state"].isin(cluster_states)].merge(
+        all_states, on="state", how="right"
+    )
+    curr_data = df[(df["year"] == curr_year) & df["state"].isin(cluster_states)].merge(
+        all_states, on="state", how="right"
+    )
     
     # Fill missing numeric values with 0
     numeric_cols = ["EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]
@@ -147,7 +158,8 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
         curr_data[col] = curr_data[col].fillna(0)
     
     # Calculate growth
-    growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations", "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]].copy()
+    growth_df = curr_data[["state", "EV Registrations", "EV Share (%)", "Stations", 
+                           "Per_Cap_Income", "Incentives", "gasoline_price_per_gallon"]].copy()
     growth_df["Growth"] = growth_df["EV Registrations"] - prev_data["EV Registrations"]
     
     # Growth labels
@@ -174,7 +186,7 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     ax.set_ylabel("Feature")
     st.pyplot(fig)
     
-    # Display table
+    # Display table with titles
     display_table = growth_df[["state", "Growth", "Growth_Label"]].rename(columns={
         "state": "State",
         "Growth": "EV Registration Growth",
@@ -183,10 +195,11 @@ def decision_tree_growth(prev_year, curr_year, cluster_states):
     st.write(f"**States and Growth Labels ({curr_year}):**")
     st.dataframe(display_table.style.set_properties(**{'text-align': 'center'}))
 
-# Generate Decision Trees
+# --- Generate Decision Trees ---
 decision_tree_growth(prev_year=2021, curr_year=2022, cluster_states=cluster_states)
 st.markdown("---")
 decision_tree_growth(prev_year=2022, curr_year=2023, cluster_states=cluster_states)
+
 
 
 
